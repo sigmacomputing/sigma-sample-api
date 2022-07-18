@@ -43,22 +43,16 @@ def get_headers(access_token):
 
 
 
-def update_member(env, access_token, user_id, first_name, last_name):
+def update_member(env, access_token, user_id, payload):
     """ Update member
 
         :access_token:  Generated access token
-        :email:         Generated access token
-        :first_name:    First name of the new member
-        :last_name:     First name of the new member
-        :member_type:   Member type of the new member
+        :userId:        ID of the user to update
+        :payload:       Fields to update
 
-        :returns:       Information of newly created member
+        :returns:       Member ID
 
     """
-    payload = {
-        "firstName": first_name,
-        "lastName": last_name,
-    }
     base_url = get_baseurl(env)
     response = requests.patch(
         f"{base_url}/v2/members/{user_id}",
@@ -86,7 +80,7 @@ def main():
     parser.add_argument(
         '--client_secret', type=str, required=True, help='Client secret generated from Sigma')
     parser.add_argument(
-        '--csv', type=str, required=True, help='CSV file containing all the data, format expected: Email,First Name,Last Name')
+        '--csv', type=str, required=True, help='CSV file containing all the data, format expected: Email,First Name,Last Name,New Email')
     parser.add_argument(
         '--env', type=str, required=True, help='env to use: [production | staging].'
     )
@@ -109,9 +103,15 @@ def main():
     for m in updated_members:
         member_email = m['Email']
         member_id = members_dict[member_email]
-        update_member(args.env, access_token, member_id, m['First Name'], m['Last Name'] )
-
-
+        payload = {}
+        for k, v in m.items():
+            if k == 'First Name':
+                payload['firstName'] = v
+            if k == 'Last Name':
+                payload['lastName'] = v
+            if k == 'New Email':
+                payload['email'] = v
+        update_member(args.env, access_token, member_id, payload)
 
 
 if __name__ == '__main__':
