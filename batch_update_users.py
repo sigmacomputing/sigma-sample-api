@@ -4,13 +4,21 @@ import argparse
 import requests
 import csv
 
-def get_baseurl(env):
+def get_baseurl(env, cloud):
     if env == 'production':
-        return "https://aws-api.sigmacomputing.com"
-    else:
-        return "https://api.staging.sigmacomputing.io"
+        if cloud == 'aws':
+            return "https://aws-api.sigmacomputing.com"
+        elif cloud == 'gcp':
+            return "https://api.sigmacomputing.com"
+    elif env == 'staging':
+        if cloud == 'aws':
+            return "https://staging-aws-api.sigmacomputing.io"
+        elif cloud == 'gcp':
+            return "https://api.staging.sigmacomputing.io"
 
-def get_access_token(env, client_id, client_secret):
+    raise Exception(f"Unknown env/cloud: {env}/{cloud}")
+
+def get_access_token(url, client_id, client_secret):
     """ Gets the access token from Sigma
 
         :client_id:     Client ID generated from Sigma
@@ -24,8 +32,7 @@ def get_access_token(env, client_id, client_secret):
         "client_id": client_id,
         "client_secret": client_secret
     }
-    base_url = get_baseurl(env)
-    response = requests.post(f"{base_url}/v2/auth/token", data=payload)
+    response = requests.post(f"{url}/v2/auth/token", data=payload)
     print(response)
     data = response.json()
 
@@ -43,7 +50,7 @@ def get_headers(access_token):
 
 
 
-def update_member(env, access_token, user_id, payload):
+def update_member(url, access_token, user_id, payload):
     """ Update member
 
         :access_token:  Generated access token
@@ -53,19 +60,17 @@ def update_member(env, access_token, user_id, payload):
         :returns:       Member ID
 
     """
-    base_url = get_baseurl(env)
     response = requests.patch(
-        f"{base_url}/v2/members/{user_id}",
+        f"{url}/v2/members/{user_id}",
         headers=get_headers(access_token),
         json=payload
     )
     data = response.json()
     return data["memberId"]
 
-def get_all_members(env, access_token):
-    base_url = get_baseurl(env)
+def get_all_members(url, access_token):
     response = requests.get(
-        f'{base_url}/v2/members',
+        f'{url}/v2/members',
         headers=get_headers(access_token)
     )
     res = response.json()
@@ -84,8 +89,12 @@ def main():
     parser.add_argument(
         '--env', type=str, required=True, help='env to use: [production | staging].'
     )
+    parser.add_argument(
+        '--cloud', type=str, required=True, help='cloud to use: [aws | gcp].'
+    )
     args = parser.parse_args()
-    access_token = get_access_token(args.env, args.client_id, args.client_secret)
+    url = get_baseurl(args.env, args.cloud)
+    access_token = get_access_token(url, args.client_id, args.client_secret)
     # parse csv
     updated_members = []
     with open(args.csv) as csvfile:
@@ -94,7 +103,7 @@ def main():
             updated_members.append(row)
 
     # Get all members for the organization
-    members = get_all_members(args.env, access_token)
+    members = get_all_members(url, access_token)
 
     members_dict = {}
     for m in members:
@@ -111,7 +120,7 @@ def main():
                 payload['lastName'] = v
             if k == 'New Email':
                 payload['email'] = v
-        update_member(args.env, access_token, member_id, payload)
+        update_member(url, access_token, member_id, payload)
 
 
 if __name__ == '__main__':
