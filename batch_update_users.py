@@ -33,7 +33,7 @@ def get_access_token(url, client_id, client_secret):
         "client_secret": client_secret
     }
     response = requests.post(f"{url}/v2/auth/token", data=payload)
-    print(response)
+    print(f"Get Access Token response: {response}")
     data = response.json()
 
     return data["access_token"]
