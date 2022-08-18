@@ -92,6 +92,10 @@ def main():
     parser.add_argument(
         '--cloud', type=str, required=True, help='cloud to use: [aws | gcp].'
     )
+        parser.add_argument(
+        '--skip_invalid_emails', type=str, required=False, help='should invalid emails be skipped: [yes]'
+    )
+
     args = parser.parse_args()
     url = get_baseurl(args.env, args.cloud)
     access_token = get_access_token(url, args.client_id, args.client_secret)
