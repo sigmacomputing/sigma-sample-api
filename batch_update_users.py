@@ -92,7 +92,7 @@ def main():
     parser.add_argument(
         '--cloud', type=str, required=True, help='cloud to use: [aws | gcp].'
     )
-        parser.add_argument(
+    parser.add_argument(
         '--skip_invalid_emails', type=str, required=False, help='should invalid emails be skipped: [yes]'
     )
 
@@ -113,18 +113,57 @@ def main():
     for m in members:
      members_dict[m['email']] = m['memberId']
 
-    for m in updated_members:
-        member_email = m['Email']
-        member_id = members_dict[member_email]
-        payload = {}
-        for k, v in m.items():
-            if k == 'First Name':
-                payload['firstName'] = v
-            if k == 'Last Name':
-                payload['lastName'] = v
-            if k == 'New Email':
-                payload['email'] = v
-        update_member(url, access_token, member_id, payload)
+    # when user enables skip_invalid_emails arg: script will bypass KeyErrors and try the next member_email in the updated_members list
+    if args.skip_invalid_emails == "yes":
+
+        for m in updated_members:
+            member_email = m['Email']
+            try:
+                member_id = members_dict[member_email]
+            except KeyError:
+                print(f"\u2717 FAILURE! Did not update {member_email}: address not found or is for a deactivated account")
+            else:
+                payload = {}
+                for k, v in m.items():
+                    if k == 'First Name':
+                        payload['firstName'] = v
+                    if k == 'Last Name':
+                        payload['lastName'] = v
+                    if k == 'New Email':
+                        payload['email'] = v
+                try:
+                    update_member(url, access_token, member_id, payload)
+                except KeyError:
+                    print(f"\u2717 FAILURE! Did not update {member_email}: {payload['email']} already in use")
+                else:
+                    print(f"\u2713 SUCCESS! {member_email} updated to {payload['email']}")
+
+    # when user does not enable skip_invalid_emails arg: default script behavior when encountering KeyError is to abort (exit code 1)
+    else:
+
+        for m in updated_members:
+            member_email = m['Email']
+            try:
+                member_id = members_dict[member_email]
+            except KeyError:
+                print(f"\u2717 FAILURE! Did not update {member_email}: address not found or is for a deactivated account")
+                raise SystemExit("Script aborted")
+            else:
+                payload = {}
+                for k, v in m.items():
+                    if k == 'First Name':
+                        payload['firstName'] = v
+                    if k == 'Last Name':
+                        payload['lastName'] = v
+                    if k == 'New Email':
+                        payload['email'] = v
+                try:
+                    update_member(url, access_token, member_id, payload)
+                except KeyError:
+                    print(f"\u2717 FAILURE! Did not update {member_email}: {payload['email']} already in use")
+                    raise SystemExit("Script aborted")
+                else:
+                    print(f"\u2713 SUCCESS! {member_email} updated to {payload['email']}")
 
 
 if __name__ == '__main__':
