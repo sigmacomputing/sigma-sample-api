@@ -126,7 +126,7 @@ def main():
     parser.add_argument(
         '--csv', type=str, required=True, help='CSV file containing members\' current email addresses and metadata to be updated. Column names are case sensitive. Required column: Email, Optional columns: First Name,Last Name,New Email,Member Type')
     parser.add_argument(
-        '--cloud', type=str, required=True, help='cloud to use: [aws | gcp] (if unsure which cloud provider your organization is hosted on, check in the Account section in Administration)'
+        '--cloud', type=str, required=True, help='cloud to use: [aws | gcp] (if unsure which, in Sigma go to Administration->Account->General Settings)'
     )
     parser.add_argument(
         '--abort_on_update_fail', type=str, required=False, help='should script abort and not try to update the next member when an attempted update fails for the current member? [enable]'
