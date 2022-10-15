@@ -117,14 +117,14 @@ def get_all_members(url, access_token):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Batch update organization members\' metadata using members\' email addresses as identifiers')
+        description='Batch update organization members\' user attributes using members\' email addresses as identifiers')
 
     parser.add_argument(
         '--client_id', type=str, required=True, help='Client ID generated from within Sigma')
     parser.add_argument(
         '--client_secret', type=str, required=True, help='Client secret API token generated from within Sigma')
     parser.add_argument(
-        '--csv', type=str, required=True, help='CSV file containing members\' current email addresses and metadata to be updated. Column names are case sensitive. Required column: Email, Optional columns: First Name,Last Name,New Email,Member Type')
+        '--csv', type=str, required=True, help='CSV file containing members\' email addresses and their user attributes to be updated. Column names are case sensitive. Required column: Email, Optional columns: First Name,Last Name,New Email,Member Type')
     parser.add_argument(
         '--cloud', type=str, required=True, help='cloud to use: [aws | gcp] (if unsure which, in Sigma go to Administration->Account->General Settings)'
     )
@@ -210,7 +210,7 @@ def main():
         except KeyError:
             print(f"\u2717 UPDATE FAILURE!")
             print(f"Member email: {member_email}")
-            print(f"This email address is either invalid, or is not found, or is for a deactivated account (reactivate the account first to change its metadata)")
+            print(f"This email address is either invalid, or is not found, or is for a deactivated account (reactivate the account first to change its user attributes)")
             print(f"###")
             if args.abort_on_update_fail == "enable":
                 raise SystemExit("Script aborted")
@@ -243,7 +243,7 @@ def main():
                 if member_first_name is None and member_last_name is None and member_new_email is None and member_type is None:
                     print(f"\u2013 UPDATED NOTHING!")
                     print(f"Member email: {member_email}")
-                    print(f"There was no metadata included in the CSV for this member")
+                    print(f"There were no user attribute values included in the CSV for this member")
                     print(f"###")
                 else:
                     print(f"\u2713 UPDATE SUCCESS!")
