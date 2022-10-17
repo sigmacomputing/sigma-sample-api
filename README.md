@@ -46,6 +46,7 @@ Replace the `<>` fields in the below template command with the relevant values f
 
 `pipenv run python batch_update_users.py --client_id <client_id> --client_secret <client_secret> --csv <path_to_your_csv_file> --env production --cloud <aws | gcp>`
 
+
 |Argument|Description|Required?
 |--|--|--|
 | **client_id** | Client ID generated from within Sigma |Yes
