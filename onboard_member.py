@@ -1,42 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
-import requests
 
-BASE_URL = "https://aws-api.sigmacomputing.com"
-
-
-def get_access_token(client_id, client_secret):
-    """ Gets the access token from Sigma
-
-        :client_id:     Client ID generated from Sigma
-        :client_secret: Client secret generated from Sigma
-
-        :returns:       Access token
-
-    """
-    payload = {
-        "grant_type": "client_credentials",
-        "client_id": client_id,
-        "client_secret": client_secret
-    }
-    response = requests.post(f"{BASE_URL}/v2/auth/token", data=payload)
-    data = response.json()
-
-    return data["access_token"]
+from utils import SigmaClient
 
 
-def get_headers(access_token):
-    """ Gets headers for API requests
-
-        :access_token:  Generated access token
-        :returns:       Headers for API requests
-
-    """
-    return {"Authorization": "Bearer " + access_token}
-
-
-def create_member(access_token, email, first_name, last_name, member_type):
+def create_member(client, email, first_name, last_name, member_type):
     """ Creates new organization member
 
         :access_token:  Generated access token
@@ -55,16 +24,15 @@ def create_member(access_token, email, first_name, last_name, member_type):
         "memberType": member_type,
         "isGuest": False
     }
-    response = requests.post(
-        f"{BASE_URL}/v2/members",
-        headers=get_headers(access_token),
+    response = client.post(
+        "v2/members",
         json=payload
     )
     data = response.json()
     return data["memberId"]
 
 
-def grant_connection(access_token, connection_id, permission, member_id):
+def grant_connection(client, connection_id, permission, member_id):
     """ Grants connection permission to a member
 
         :access_token:   Generated access token
@@ -81,14 +49,13 @@ def grant_connection(access_token, connection_id, permission, member_id):
             }
         ]
     }
-    requests.post(
-        f"{BASE_URL}/v2/connections/{connection_id}/grants",
-        headers=get_headers(access_token),
+    client.post(
+        f"v2/connections/{connection_id}/grants",
         json=payload
     )
 
 
-def grant_workspace(access_token, workspace_id, permission, member_id):
+def grant_workspace(client, workspace_id, permission, member_id):
     """ Grants workspace permission to a member
 
         :access_token:  Generated access token
@@ -105,14 +72,17 @@ def grant_workspace(access_token, workspace_id, permission, member_id):
             }
         ]
     }
-    requests.post(
-        f"{BASE_URL}/v2/workspaces/{workspace_id}/grants", headers=get_headers(access_token), json=payload)
+    client.post(
+        f"v2/workspaces/{workspace_id}/grants", json=payload)
 
 
 def main():
     parser = argparse.ArgumentParser(
         description='Onboard a new organization member')
-
+    parser.add_argument(
+        '--env', type=str, required=True, help='env to use: [production | staging].')
+    parser.add_argument(
+        '--cloud', type=str, required=True, help='Cloud to use: [aws | gcp]')
     parser.add_argument(
         '--client_id', type=str, required=True, help='Client ID generated from Sigma')
     parser.add_argument(
@@ -131,11 +101,10 @@ def main():
         '--workspace_id', type=str, help='Optional ID of workspace to grant permission')
 
     args = parser.parse_args()
-
-    access_token = get_access_token(args.client_id, args.client_secret)
+    client = SigmaClient(args.env, args.cloud, args.client_id, args.client_secret)
 
     # Create new organization member
-    member_id = create_member(access_token, args.email,
+    member_id = create_member(client, args.email,
                               args.first_name, args.last_name, args.member_type)
 
     # Assign the member to a connection
@@ -143,14 +112,14 @@ def main():
         connection_permission_map = {
             'creator': 'annotate', 'explorer': 'usage'}
         permission = connection_permission_map[args.member_type]
-        grant_connection(access_token, args.connection_id,
+        grant_connection(client, args.connection_id,
                          permission, member_id)
     # Assign the member to a workspace
     elif args.workspace_id:
         workspace_permission_map = {
             'admin': 'edit', 'creator': 'organize', 'explorer': 'explore', 'viewer': 'view'}
         permission = workspace_permission_map[args.member_type]
-        grant_workspace(access_token, args.workspace_id, permission, member_id)
+        grant_workspace(client, args.workspace_id, permission, member_id)
 
 
 if __name__ == '__main__':

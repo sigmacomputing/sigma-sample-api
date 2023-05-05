@@ -2,42 +2,12 @@
 
 import argparse
 import json
-import requests
+import time
 
-BASE_URL = "https://aws-api.sigmacomputing.com"
-
-
-def get_access_token(client_id, client_secret):
-    """ Gets the access token from Sigma
-
-        :client_id:     Client ID generated from Sigma
-        :client_secret: Client secret generated from Sigma
-
-        :returns:       Access token
-
-    """
-    payload = {
-        "grant_type": "client_credentials",
-        "client_id": client_id,
-        "client_secret": client_secret
-    }
-    response = requests.post(f"{BASE_URL}/v2/auth/token", data=payload)
-    data = response.json()
-
-    return data["access_token"]
+from utils import SigmaClient
 
 
-def get_headers(access_token):
-    """ Gets headers for API requests
-
-        :access_token:  Generated access token
-        :returns:       Headers for API requests
-
-    """
-    return {"Authorization": "Bearer " + access_token}
-
-
-def get_workbook_schema(access_token, workbook_id):
+def get_workbook_schema(client, workbook_id):
     """ Gets the workbook's schema
 
         :access_token:  Generated access token
@@ -46,14 +16,13 @@ def get_workbook_schema(access_token, workbook_id):
         :returns:       Dictionary of workbook's schema
 
     """
-    response = requests.get(
-        f"{BASE_URL}/v2/workbooks/{workbook_id}/schema",
-        headers=get_headers(access_token)
+    response = client.get(
+        f"v2/workbooks/{workbook_id}/schema",
     )
     return response.json()
 
 
-def export_workbook(access_token, workbook_id, element_id=None):
+def export_workbook(client, workbook_id, export_format='json', element_id=None, retries=5):
     """ Exports workbook to file
 
         :access_token:  Generated access token
@@ -65,39 +34,61 @@ def export_workbook(access_token, workbook_id, element_id=None):
     """
     payload = {
         "format": {
-            "type": "json"
+            "type": export_format
         }
     }
     if element_id:
         payload["elementId"] = element_id
 
-    response = requests.post(
-        f"{BASE_URL}/v2/workbooks/{workbook_id}/export",
-        headers=get_headers(access_token),
+    response = client.post(
+        f"v2/workbooks/{workbook_id}/export",
         json=payload
     )
-    return response.json()
+    try:
+        query_id = response.json()['queryId']
+        return query_id
+    except:
+        err = {'status_code': response.status_code, 'content': response.text, 'retries': retries}
+        print(f'error: {err}')
+        if retries < 0:
+            raise
+        return export_workbook(client, workbook_id, export_format, element_id, retries - 1)
 
 
-def write_to_file(filename, data, element_id=None):
+def retrieve_results(client, query_id):
+    res = None
+    while res is None:
+        time.sleep(10)
+
+        response = client.get(
+            f'v2/query/{query_id}/download',
+        )
+        if response.status_code == 200:
+            res = response.content
+        elif response.status_code != 204:
+            print(f'status: {response.status_code}, content: {response.text}')
+    return res
+
+
+def write_to_file(filename, content, export_format='json', element_id=None):
     """ Writes export result to file
-
         :filename:      Filename to write to
         :data:          JSON data to write
         :element_id:    Optional element ID if multiple exports
-
     """
     if element_id:
         filename = f"{filename}_{element_id}"
 
-    with open(f"{filename}.json", 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
+    with open(f"{filename}.{export_format}", 'wb') as f:
+        f.write(content)
 
 def main():
     parser = argparse.ArgumentParser(
         description='Export a workbook from Sigma into JSON')
-
+    parser.add_argument(
+        '--env', type=str, required=True, help='env to use: [production | staging].')
+    parser.add_argument(
+        '--cloud', type=str, required=True, help='Cloud to use: [aws | gcp]')
     parser.add_argument(
         '--client_id', type=str, required=True, help='Client ID generated from Sigma')
     parser.add_argument(
@@ -108,22 +99,26 @@ def main():
         '--element_id', type=str, help='Optional workbook element')
     parser.add_argument(
         '--filename', type=str, help='Optional filename prefix')
+    parser.add_argument(
+        '--format', type=str, default='json', help='Optional format: [csv | json | pdf]')
 
     args = parser.parse_args()
 
-    access_token = get_access_token(args.client_id, args.client_secret)
+    client = SigmaClient(args.env, args.cloud, args.client_id, args.client_secret)
     if args.element_id:
-        data = export_workbook(access_token, args.workbook_id, args.element_id)
+        query_id = export_workbook(client, args.workbook_id, args.format, args.element_id)
+        content = retrieve_results(client, query_id)
         filename = args.filename if args.filename else args.workbook_id
-        write_to_file(filename, data)
+        write_to_file(filename, content, args.format)
     else:
-        schema = get_workbook_schema(access_token, args.workbook_id)
+        schema = get_workbook_schema(client, args.workbook_id)
         elements = schema["elements"]
         print(elements)
         for element_id, _ in elements.items():
-            data = export_workbook(access_token, args.workbook_id, element_id)
+            query_id = export_workbook(client, args.workbook_id, args.format, element_id)
+            content = retrieve_results(client, query_id)
             filename = args.filename if args.filename else args.workbook_id
-            write_to_file(filename, data, element_id)
+            write_to_file(filename, content, args.format, element_id)
 
 
 if __name__ == '__main__':

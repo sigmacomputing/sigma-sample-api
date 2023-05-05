@@ -1,67 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
-import requests
 import csv
 
-def get_baseurl(env, cloud):
-    if env == 'production':
-        if cloud == 'aws':
-            return "https://aws-api.sigmacomputing.com"
-        elif cloud == 'gcp':
-            return "https://api.sigmacomputing.com"
-    elif env == 'staging':
-        if cloud == 'aws':
-            return "https://staging-aws-api.sigmacomputing.io"
-        elif cloud == 'gcp':
-            return "https://api.staging.sigmacomputing.io"
+import requests
 
-    raise Exception(f"Unknown env/cloud: {env}/{cloud}")
+from utils import SigmaClient
 
-def get_access_token(url, client_id, client_secret):
-    """ Gets the access token from Sigma
-
-        :client_id:     Client ID generated from Sigma
-        :client_secret: Client secret generated from Sigma
-
-        :returns:       Access token
-
-    """
-    payload = {
-        "grant_type": "client_credentials",
-        "client_id": client_id,
-        "client_secret": client_secret
-    }
-    
-    try:
-        print(f"Fetching Access Token...")
-        response = requests.post(f"{url}/v2/auth/token", data=payload)
-        response.raise_for_status()
- 
-    except requests.exceptions.HTTPError as errh:
-        raise Exception(f"Connection Error: {errh}, API response: {errh.response.text}")
-    except requests.exceptions.ConnectionError as errc:
-        raise Exception(f"Connection Error: {errc}, API response: {errc.response.text}")
-    except requests.exceptions.Timeout as errt:
-        raise Exception(f"Timeout Error: {errh}, API response: {errt.response.text}")
-    except requests.exceptions.RequestException as err:
-        raise Exception(f"Other Error: {err}, API response: {err.response.text}")
-    else:
-        print(f"...Success!")
-        data = response.json()
-
-        return data["access_token"]
-
-def get_headers(access_token):
-    """ Gets headers for API requests
-
-        :access_token:  Generated access token
-        :returns:       Headers for API requests
-
-    """
-    return {"Authorization": "Bearer " + access_token}
-
-def update_member(url, access_token, user_id, payload):
+def update_member(client, user_id, payload):
     """ Update member
 
         :access_token:  Generated access token
@@ -72,9 +18,8 @@ def update_member(url, access_token, user_id, payload):
 
     """
     try:
-        response = requests.patch(
-            f"{url}/v2/members/{user_id}",
-            headers=get_headers(access_token),
+        response = client.patch(
+            f"v2/members/{user_id}",
             json=payload
         )
         response.raise_for_status()
@@ -86,7 +31,7 @@ def update_member(url, access_token, user_id, payload):
     except requests.exceptions.ConnectionError as errc:
         raise Exception(f"Connection Error: {errc}, API response: {errc.response.text}")
     except requests.exceptions.Timeout as errt:
-        raise Exception(f"Timeout Error: {errh}, API response: {errt.response.text}")
+        raise Exception(f"Timeout Error: {errt}, API response: {errt.response.text}")
     except requests.exceptions.RequestException as err:
         raise Exception(f"Other Error: {err}, API response: {err.response.text}")
     else:
@@ -94,11 +39,11 @@ def update_member(url, access_token, user_id, payload):
 
         return data
 
-def get_all_members(url, access_token):
+
+def get_all_members(client):
     try:
-        response = requests.get(
-            f'{url}/v2/members',
-            headers=get_headers(access_token)
+        response = client.get(
+            'v2/members'
         )
         response.raise_for_status()
  
@@ -107,7 +52,7 @@ def get_all_members(url, access_token):
     except requests.exceptions.ConnectionError as errc:
         raise Exception(f"Connection Error: {errc}, API response: {errc.response.text}")
     except requests.exceptions.Timeout as errt:
-        raise Exception(f"Timeout Error: {errh}, API response: {errt.response.text}")
+        raise Exception(f"Timeout Error: {errt}, API response: {errt.response.text}")
     except requests.exceptions.RequestException as err:
         raise Exception(f"Other Error: {err}, API response: {err.response.text}")
     else:
@@ -115,10 +60,14 @@ def get_all_members(url, access_token):
 
         return data
 
+
 def main():
     parser = argparse.ArgumentParser(
         description='Batch update organization members\' user attributes using members\' email addresses as identifiers')
-
+    parser.add_argument(
+        '--env', type=str, required=True, help='env to use: [production | staging].')
+    parser.add_argument(
+        '--cloud', type=str, required=True, help='Cloud to use: [aws | gcp]')
     parser.add_argument(
         '--client_id', type=str, required=True, help='Client ID generated from within Sigma')
     parser.add_argument(
@@ -126,27 +75,16 @@ def main():
     parser.add_argument(
         '--csv', type=str, required=True, help='CSV file containing members\' email addresses and their user attributes to be updated. Column names are case sensitive. Required column: Email, Optional columns: First Name,Last Name,New Email,Member Type')
     parser.add_argument(
-        '--cloud', type=str, required=True, help='cloud to use: [aws | gcp] (if unsure which, in Sigma go to Administration->Account->General Settings)'
-    )
-    parser.add_argument(
         '--abort_on_update_fail', type=str, required=False, help='should script abort and not try to update the next member when an attempted update fails for the current member? [enable]'
-    )
-    parser.add_argument(
-        '--env', type=str, required=True, help='env to use: [production | staging] (external users should always use production)'
     )
 
     args = parser.parse_args()
-    url = get_baseurl(args.env, args.cloud)
+    client = SigmaClient(args.env, args.cloud, args.client_id, args.client_secret)
 
-    try:
-        access_token = get_access_token(url, args.client_id, args.client_secret)
-    except Exception as e:
-        print(f"{e}")
-        raise SystemExit("Script aborted")
 
     # Get all members for the organization and make a dict of their emails and memberIds
     try:
-        members = get_all_members(url, access_token)
+        members = get_all_members(client)
     except Exception as e:
         print(f"{e}")
         raise SystemExit("Script aborted")
@@ -154,7 +92,6 @@ def main():
     for m in members:
      members_dict[m['email']] = m['memberId']
 
-    # Parse csv
     updated_members = []
     with open(args.csv) as csvfile:
         reader = csv.DictReader(csvfile)
@@ -225,8 +162,9 @@ def main():
             if member_type:
                 payload['memberType'] = member_type
 
+
             try:
-                update_member_response = update_member(url, access_token, member_id, payload)
+                update_member_response = update_member(client, member_id, payload)
             except Exception as e:
                 print(f"\u2717 UPDATE FAILURE!")
                 print(f"Member email: {member_email}")
