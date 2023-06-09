@@ -21,9 +21,9 @@ def main():
     parser.add_argument(
         '--team_id', type=str, required=True, help='ID of the team')
     parser.add_argument(
-        '-a', '--add', nargs='+', type=str, help='Optional workbook element')
+        '-a', '--add', nargs='+', type=str, help='user ids to add to the teams')
     parser.add_argument(
-        '-r', '--remove', nargs='+', type=str, help='Optional filename prefix')
+        '-r', '--remove', nargs='+', type=str, help='user ids to remove from the team')
     parser.add_argument(
         '-f', '--file', type=str, help='Optional csv file with columns "member_id, operation" where operation in (add|remove)'
     )
