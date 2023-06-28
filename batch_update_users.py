@@ -141,13 +141,14 @@ def main():
                 member_type = None
         except KeyError:
                 member_type = None
-            archived_value = m.get('isArchived', None)
-            if archived_value == "True":
-                member_isArchived = True
-            elif archived_value == "False":
-                member_isArchived = False
-            else:
-                member_isArchived = None
+
+        archived_value = m.get('isArchived', None)
+        if archived_value == "True":
+            member_isArchived = True
+        elif archived_value == "False":
+            member_isArchived = False
+        else:
+            member_isArchived = None
 
         try:
             member_id = members_dict[member_email]
