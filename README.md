@@ -21,7 +21,7 @@ Create a specifically-formatted CSV file for our script to be able to parse. The
 > See an example of this required format in the CSV file in this repo named: [example_csv_for_batch_update_users.csv](examples/example_csv_for_batch_update_users.csv)
 
 **Required header:** Email
-**Optional headers:** First Name,Last Name,New Email,Member Type
+**Optional headers:** First Name,Last Name,New Email,Member Type,isArchived
 
 The values for the "Email" column will be the email addresses of the users whose attributes you want to update.
 

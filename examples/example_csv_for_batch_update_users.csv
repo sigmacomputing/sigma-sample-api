@@ -1,4 +1,6 @@
-Email,First Name,Last Name,New Email,Member Type
-gareth@sigmacomputing.com,Gary,Brick,,
-brett@sigmacomputing.com,,,,Creator
-jacob@sigma.com,,,jacob@sigmacomputing.com,
+Email,First Name,Last Name,New Email,Member Type,isArchived
+gareth@sigmacomputing.com,Gary,Brick,,,
+brett@sigmacomputing.com,,,,Creator,
+jacob@sigma.com,,,jacob@sigmacomputing.com,,
+erin@sigmacomputing.com,,,,,True
+chad@sigmacomputing.com,,,,,False
