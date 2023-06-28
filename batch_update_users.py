@@ -43,7 +43,7 @@ def update_member(client, user_id, payload):
 def get_all_members(client):
     try:
         response = client.get(
-            'v2/members'
+            'v2/members?includeArchived=true'
         )
         response.raise_for_status()
  
@@ -73,7 +73,7 @@ def main():
     parser.add_argument(
         '--client_secret', type=str, required=True, help='Client secret API token generated from within Sigma')
     parser.add_argument(
-        '--csv', type=str, required=True, help='CSV file containing members\' email addresses and their user attributes to be updated. Column names are case sensitive. Required column: Email, Optional columns: First Name,Last Name,New Email,Member Type')
+        '--csv', type=str, required=True, help='CSV file containing members\' email addresses and their user attributes to be updated. Column names are case sensitive. Required column: Email, Optional columns: First Name,Last Name,New Email,Member Type, isArchived')
     parser.add_argument(
         '--abort_on_update_fail', type=str, required=False, help='should script abort and not try to update the next member when an attempted update fails for the current member? [enable]'
     )
@@ -97,7 +97,7 @@ def main():
         reader = csv.DictReader(csvfile)
         for row in reader:
             updated_members.append(row)
-    
+
     for m in updated_members:
         try:
             if len(m['Email']) > 1:
@@ -141,6 +141,13 @@ def main():
                 member_type = None
         except KeyError:
                 member_type = None
+            archived_value = m.get('isArchived', None)
+            if archived_value == "True":
+                member_isArchived = True
+            elif archived_value == "False":
+                member_isArchived = False
+            else:
+                member_isArchived = None
 
         try:
             member_id = members_dict[member_email]
@@ -161,7 +168,8 @@ def main():
                     payload['email'] = member_new_email
             if member_type:
                 payload['memberType'] = member_type
-
+            if member_isArchived is not None :
+                payload['isArchived'] = member_isArchived
 
             try:
                 update_member_response = update_member(client, member_id, payload)
@@ -171,14 +179,14 @@ def main():
                 print(f"The below API error prevented an update being applied for this member:")
                 print(f"{e}")
                 if e.args[0] == 404:
-                    print(f"If the 404 error message is \"Member type name is not found\", the Member Type specified is invalid/not in use: {payload['memberType']}")
+                    print(f"If the 404 error message is \"Member type name is not found\", the Member Type specified is invalid/not in use")
                 if e.args[0] == 409:
-                    print(f"If the 409 error message is \"Duplicate record\", the New Email specified is in use by an existing member: {payload['email']}")
+                    print(f"If the 409 error message is \"Duplicate record\", the New Email specified is in use by an existing member")
                 print(f"###")
                 if args.abort_on_update_fail == "enable":
                     raise SystemExit("Script aborted")
             else:
-                if member_first_name is None and member_last_name is None and member_new_email is None and member_type is None:
+                if member_first_name is None and member_last_name is None and member_new_email is None and member_type is None and member_isArchived is None:
                     print(f"\u2013 UPDATED NOTHING!")
                     print(f"Member email: {member_email}")
                     print(f"There were no user attribute values included in the CSV for this member")
@@ -194,6 +202,10 @@ def main():
                         print(f"Email updated to: {update_member_response['email']}")
                     if member_type:
                         print(f"Member type updated to: {update_member_response['memberType']}")
+                    if member_isArchived is True:
+                        print(f"isArchived updated to: {update_member_response['isArchived']}")
+                    if member_isArchived is False:
+                        print(f"isArchived updated to: {update_member_response['isArchived']}")
                     print(f"###")
 
 if __name__ == '__main__':
