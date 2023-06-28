@@ -67,7 +67,7 @@ def main():
     parser.add_argument(
         '--env', type=str, required=True, help='env to use: [production | staging].')
     parser.add_argument(
-        '--cloud', type=str, required=True, help='Cloud to use: [aws | gcp]')
+        '--cloud', type=str, required=True, help='Cloud to use: [aws | gcp | azure]')
     parser.add_argument(
         '--client_id', type=str, required=True, help='Client ID generated from within Sigma')
     parser.add_argument(
