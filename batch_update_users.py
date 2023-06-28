@@ -170,9 +170,7 @@ def main():
                     payload['email'] = member_new_email
             if member_type:
                 payload['memberType'] = member_type
-            if member_isArchived is True:
-                payload['isArchived'] = member_isArchived
-            elif member_isArchived is False:
+            if member_isArchived is not None :
                 payload['isArchived'] = member_isArchived
 
             try:
