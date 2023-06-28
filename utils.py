@@ -19,6 +19,11 @@ def get_base_url(cloud: str, env: str):
             base_url = 'https://staging-aws-api.sigmacomputing.io'
         elif env == 'prod' or env == 'production':
             base_url = 'https://aws-api.sigmacomputing.com'
+    elif cloud == 'azure':
+        if env == 'staging':
+            base_url = 'https://api.staging.us.azure.sigmacomputing.io'
+        elif env == 'prod' or env == 'production':
+            base_url = 'https://api.us.azure.sigmacomputing.com'
     return base_url
 
 
