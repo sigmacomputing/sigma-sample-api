@@ -44,7 +44,7 @@ Ensure there is no trailing whitespace at the end of any of the addresses and no
 
 Replace the `<>` fields in the below template command with the relevant values for their corresponding arguments:
 
-`pipenv run python batch_update_users.py --client_id <client_id> --client_secret <client_secret> --csv <path_to_your_csv_file> --env production --cloud <aws | gcp>`
+`pipenv run python batch_update_users.py --client_id <client_id> --client_secret <client_secret> --csv <path_to_your_csv_file> --env production --cloud <aws | gcp | azure>`
 
 |Argument|Description|Required?
 |--|--|--|
@@ -55,7 +55,7 @@ Replace the `<>` fields in the below template command with the relevant values f
 | **cloud** | Cloud provider your Sigma instance is on: aws or gcp |Yes
 | **abort_on_update_fail** | Script should abort on any update error: enable |No
 
-> You will select either "aws" or "gcp" for the " --cloud" option depending on which provider your Sigma instance is running on. You can see which cloud yours is inside Sigma by going to Administration->Account->General Settings. (We need to know this because there are [separate APIs for each](https://help.sigmacomputing.com/hc/en-us/articles/4408835546003-Get-Started-with-Sigma-s-API#ite))
+> You will select either "aws", "gcp" or "azure" for the " --cloud" option depending on which provider your Sigma instance is running on. You can see which cloud yours is inside Sigma by going to Administration->Account->General Settings. (We need to know this because there are [separate APIs for each](https://help.sigmacomputing.com/hc/en-us/articles/4408835546003-Get-Started-with-Sigma-s-API#ite))
 
 Example run command:
 
