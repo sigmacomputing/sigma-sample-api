@@ -141,14 +141,12 @@ def main():
                 member_type = None
         except KeyError:
                 member_type = None
-        try:
-            if len(m['isArchived']) > 1 and m['isArchived'] == "True":
+            archived_value = m.get('isArchived', None)
+            if archived_value == "True":
                 member_isArchived = True
-            elif len(m['isArchived']) > 1 and m['isArchived'] == "False":
+            elif archived_value == "False":
                 member_isArchived = False
             else:
-                member_isArchived = None
-        except KeyError:
                 member_isArchived = None
 
         try:
