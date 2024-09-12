@@ -41,24 +41,33 @@ def update_member(client, user_id, payload):
 
 
 def get_all_members(client):
-    try:
-        response = client.get(
-            'v2/members?includeArchived=true'
-        )
-        response.raise_for_status()
- 
-    except requests.exceptions.HTTPError as errh:
-        raise Exception(f"Connection Error: {errh}, API response: {errh.response.text}")
-    except requests.exceptions.ConnectionError as errc:
-        raise Exception(f"Connection Error: {errc}, API response: {errc.response.text}")
-    except requests.exceptions.Timeout as errt:
-        raise Exception(f"Timeout Error: {errt}, API response: {errt.response.text}")
-    except requests.exceptions.RequestException as err:
-        raise Exception(f"Other Error: {err}, API response: {err.response.text}")
-    else:
-        data = response.json()
+    data = []
+    moreResults = True
+    nextPage = ''
+    while moreResults:
+        try:
+            response = client.get(
+                f'v2/members?includeArchived=true&limit=500{nextPage}'
+            )
+            response.raise_for_status()
 
-        return data
+        except requests.exceptions.HTTPError as errh:
+            raise Exception(f"Connection Error: {errh}, API response: {errh.response.text}")
+        except requests.exceptions.ConnectionError as errc:
+            raise Exception(f"Connection Error: {errc}, API response: {errc.response.text}")
+        except requests.exceptions.Timeout as errt:
+            raise Exception(f"Timeout Error: {errt}, API response: {errt.response.text}")
+        except requests.exceptions.RequestException as err:
+            raise Exception(f"Other Error: {err}, API response: {err.response.text}")
+        else:
+            resp = response.json()
+            data = data + resp['entries']
+            if resp['nextPage'] is None:
+                moreResults = False
+            else:
+                pageID = str(resp['nextPage'])
+                nextPage = f'&page={pageID}'
+    return data
 
 
 def main():
@@ -80,8 +89,8 @@ def main():
 
     args = parser.parse_args()
     client = SigmaClient(args.env, args.cloud, args.client_id, args.client_secret)
-
-
+    
+    
     # Get all members for the organization and make a dict of their emails and memberIds
     try:
         members = get_all_members(client)
@@ -90,7 +99,7 @@ def main():
         raise SystemExit("Script aborted")
     members_dict = {}
     for m in members:
-     members_dict[m['email']] = m['memberId']
+        members_dict[m['email']] = m['memberId']
 
     updated_members = []
     with open(args.csv) as csvfile:
@@ -110,7 +119,7 @@ def main():
             print(f"###")
             raise SystemExit("Script aborted")
 
-        # This block of try/excepts sets the variables that get used as the request payload's values for the optional columns 
+        # This block of try/excepts sets the variables that get used as the request payload's values for the optional columns
         # They will be set to None if the column itself is absent or if its value is blank/empty
         # These KeyErrors do not apply to the --abort_on_update_flag option
         try:
@@ -119,28 +128,28 @@ def main():
             else:
                 member_first_name = None
         except KeyError:
-                member_first_name = None
+            member_first_name = None
         try:
             if len(m['Last Name']) > 1:
                 member_last_name = m['Last Name']
             else:
                 member_last_name = None
         except KeyError:
-                member_last_name = None
+            member_last_name = None
         try:
             if len(m['New Email']) > 1:
                 member_new_email = m['New Email']
             else:
                 member_new_email = None
         except KeyError:
-                member_new_email = None
+            member_new_email = None
         try:
             if len(m['Member Type']) > 1:
                 member_type = m['Member Type']
             else:
                 member_type = None
         except KeyError:
-                member_type = None
+            member_type = None
 
         archived_value = m.get('isArchived', None)
         if archived_value == "True":
@@ -162,11 +171,11 @@ def main():
         else:
             payload = {}
             if member_first_name:
-                    payload['firstName'] = member_first_name
+                payload['firstName'] = member_first_name
             if member_last_name:
-                    payload['lastName'] = member_last_name
+                payload['lastName'] = member_last_name
             if member_new_email:
-                    payload['email'] = member_new_email
+                payload['email'] = member_new_email
             if member_type:
                 payload['memberType'] = member_type
             if member_isArchived is not None :
