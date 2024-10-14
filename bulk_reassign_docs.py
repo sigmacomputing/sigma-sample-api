@@ -37,6 +37,9 @@ def get_member_id(client, user_email):
         if len(data['entries']) == 0:
             print("No users found with this email:", user_email)
             raise SystemExit("Script aborted")
+        elif len(data['entries']) > 1:
+            print("More than one user found with the provided email:", user_email)
+            raise SystemExit("Script aborted")
         else:
             return data['entries'][0]['memberId']
 
@@ -53,8 +56,9 @@ def get_member_files(client, user_id):
     nextPage = ''
     while moreResults:
         try:
+            # currently looks for workbooks and datasets but can be changed as needed
             response = client.get(
-                f"v2/members/{user_id}/files?typeFilters=workbook&typeFilters=dataset&limit=500{nextPage}"
+                f"v2/members/{user_id}/files?typeFilters=workbook&typeFilters=dataset&limit=1000{nextPage}"
             )
             response.raise_for_status()
 
@@ -81,7 +85,7 @@ def get_member_files(client, user_id):
     return data
 
 
-def update_file(client, user_id, file_id):
+def update_file(client, user_id, file_id, folderID):
     """ Update file
 
         :access_token:  Generated access token
@@ -91,10 +95,13 @@ def update_file(client, user_id, file_id):
         :returns:       Response JSON
 
     """
+    updateFileBody={"ownerId": user_id}
+    if folderID:
+        updateFileBody["parentId"] = folderID
     try:
         response = client.patch(
             f"v2/files/{file_id}",
-            json={"ownerId": user_id}
+            json=updateFileBody
         )
         response.raise_for_status()
     # HTTP and other errors are handled generally by raising them as exceptions to be surfaced in downstream code
@@ -130,9 +137,11 @@ def main():
     parser.add_argument(
         '--client_secret', type=str, required=True, help='Client secret API token generated from within Sigma')
     parser.add_argument(
-        '--curr_owner', type=str, required=True, help='Org Member who currently owns the documents')
+        '--curr_owner', type=str, required=True, help='Email of Org Member who currently owns the documents')
     parser.add_argument(
-        '--new_owner', type=str, required=True, help='Org Member who you want to transfer the documents to')
+        '--new_owner', type=str, required=True, help='Email of Org Member who you want to transfer the documents to')
+    parser.add_argument(
+        '--new_folder', type=str, required=False, help='Optional folder to place the files in')
 
     args = parser.parse_args()
     client = SigmaClient(args.env, args.cloud,
@@ -159,11 +168,11 @@ def main():
         raise SystemExit("Script aborted")
 
     # filter to only docs they own
-    filtered_arr = [p for p in member_files if p['ownerId'] == curr_owner_id]
+    filtered_arr = [file for file in member_files if file['ownerId'] == curr_owner_id]
     # loop through and reassign ownership
-    for d in filtered_arr:
+    for ownedDoc in filtered_arr:
         try:
-            update_member_response = update_file(client, new_owner_id, d['id'])
+            update_member_response = update_file(client, new_owner_id, ownedDoc['id'], args.new_folder)
         except Exception as e:
             print(f"{e}")
             raise SystemExit("Script aborted")
